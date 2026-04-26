@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>YouTube 1분 요약</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Private MVP</p>
+        <h1>YouTube 1분 요약</h1>
+      </div>
+      <p class="retention">생성물은 24시간 보관</p>
+    </header>
+
+    <main class="layout">
+      <section class="input-panel" aria-label="작업 생성">
+        <form id="job-form" class="url-form">
+          <label for="youtube-url">YouTube URL</label>
+          <div class="url-row">
+            <input id="youtube-url" name="url" type="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=..." required>
+            <button id="submit-button" type="submit">요약 만들기</button>
+          </div>
+        </form>
+
+        <div id="status-panel" class="status-panel" hidden>
+          <div class="status-copy">
+            <strong id="status-label">대기 중</strong>
+            <span id="status-detail">작업을 준비하고 있습니다.</span>
+          </div>
+          <div class="progress-track" aria-hidden="true">
+            <div id="progress-fill" class="progress-fill"></div>
+          </div>
+        </div>
+
+        <div id="error-panel" class="error-panel" hidden></div>
+      </section>
+
+      <section id="player-panel" class="player-panel" aria-label="요약 플레이어" hidden>
+        <div class="media-stage">
+          <img id="frame-image" alt="요약 구간 화면" src="">
+          <div class="caption-layer">
+            <p id="segment-headline"></p>
+            <p id="segment-subtitle"></p>
+          </div>
+        </div>
+
+        <div class="playback">
+          <button id="play-button" type="button">재생</button>
+          <button id="prev-button" type="button" aria-label="이전 구간">이전</button>
+          <button id="next-button" type="button" aria-label="다음 구간">다음</button>
+          <div class="time-readout">
+            <span id="segment-time">00:00</span>
+            <span id="total-time">00:00</span>
+          </div>
+        </div>
+
+        <div class="summary-progress" aria-hidden="true">
+          <div id="summary-progress-fill"></div>
+        </div>
+
+        <div class="meta-row">
+          <div>
+            <p id="source-title" class="source-title"></p>
+            <a id="source-link" href="#" target="_blank" rel="noreferrer">원본 열기</a>
+          </div>
+          <ol id="segment-list" class="segment-list"></ol>
+        </div>
+      </section>
+    </main>
+
+    <audio id="segment-audio" preload="auto"></audio>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

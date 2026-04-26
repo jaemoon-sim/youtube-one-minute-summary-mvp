@@ -1,0 +1,8 @@
+.DS_Store
+.env
+.next/
+node_modules/
+data/*.sqlite
+data/*.sqlite-*
+data/jobs/*
+!data/jobs/.gitkeep
