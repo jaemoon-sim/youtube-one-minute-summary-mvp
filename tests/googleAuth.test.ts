@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -7,7 +7,7 @@ import test from "node:test";
 import { createJwtAssertion, loadServiceAccountKey } from "../src/googleAuth.ts";
 
 test("loads only service account credential JSON", async () => {
-  const dir = await mkdir(path.join(os.tmpdir(), "summary-mvp-auth-"), { recursive: true });
+  const dir = await mkdtemp(path.join(os.tmpdir(), "summary-mvp-auth-"));
   const validPath = path.join(dir, "service-account.json");
   await writeFile(validPath, JSON.stringify({
     type: "service_account",

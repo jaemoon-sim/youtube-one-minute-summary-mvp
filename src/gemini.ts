@@ -23,16 +23,12 @@ async function requestGeminiSummary(sourceUrl: string): Promise<SummaryDraft> {
       "Content-Type": "application/json",
       "x-goog-api-key": config.geminiApiKey
     },
+    signal: AbortSignal.timeout(300_000),
     body: JSON.stringify({
       contents: [
         {
           role: "user",
           parts: [
-            {
-              file_data: {
-                file_uri: sourceUrl
-              }
-            },
             {
               text: [
                 "이 YouTube 영상을 한국어 1분 미만 웹 요약 영상으로 재구성해줘.",
@@ -45,42 +41,28 @@ async function requestGeminiSummary(sourceUrl: string): Promise<SummaryDraft> {
                 "  ]",
                 "}",
                 "조건:",
-                "- segments는 6개 이상 10개 이하.",
+                "- segments는 정확히 6개.",
                 "- 전체 narrationKo를 자연스럽게 읽으면 45-55초가 되게 짧게.",
                 "- 정보 전달 위주로 핵심 주장, 근거, 결론을 보존.",
                 "- startSec/endSec는 원본에서 해당 내용을 대표하는 구간.",
                 "- subtitleKo는 화면 하단 자막으로 읽기 쉬운 길이."
               ].join("\n")
+            },
+            {
+              file_data: {
+                file_uri: sourceUrl
+              }
             }
           ]
         }
       ],
       generationConfig: {
         temperature: 0.25,
+        thinkingConfig: {
+          thinkingBudget: 0
+        },
         responseMimeType: "application/json",
-        responseJsonSchema: {
-          type: "object",
-          properties: {
-            sourceTitle: { type: "string" },
-            segments: {
-              type: "array",
-              minItems: 6,
-              maxItems: 10,
-              items: {
-                type: "object",
-                properties: {
-                  startSec: { type: "integer" },
-                  endSec: { type: "integer" },
-                  headline: { type: "string" },
-                  subtitleKo: { type: "string" },
-                  narrationKo: { type: "string" }
-                },
-                required: ["startSec", "endSec", "headline", "subtitleKo", "narrationKo"]
-              }
-            }
-          },
-          required: ["sourceTitle", "segments"]
-        }
+        maxOutputTokens: 8192
       }
     })
   });
