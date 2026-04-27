@@ -16,10 +16,13 @@ type PlaywrightModule = {
       newPage(options: { viewport: { width: number; height: number }; deviceScaleFactor: number }): Promise<{
         goto(url: string, options: { waitUntil: "domcontentloaded"; timeout: number }): Promise<unknown>;
         locator(selector: string): {
+          click(options?: { position?: { x: number; y: number }; timeout?: number }): Promise<void>;
           screenshot(options: { path: string; type: "png"; timeout?: number }): Promise<Buffer>;
         };
+        waitForFunction<R>(fn: (...args: unknown[]) => R, arg: unknown, options?: { timeout?: number }): Promise<unknown>;
         waitForTimeout(ms: number): Promise<void>;
         screenshot(options: { path: string; type: "png" }): Promise<Buffer>;
+        evaluate<R>(fn: (...args: unknown[]) => R, arg?: unknown): Promise<R>;
         close(): Promise<void>;
       }>;
       close(): Promise<void>;
@@ -70,8 +73,54 @@ async function captureWithPlaywright(
       const start = Math.max(0, Math.floor(segment.startSec));
       const watchUrl = `https://www.youtube.com/watch?v=${videoId}&t=${start}s`;
       await page.goto(watchUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
-      await page.waitForTimeout(5_000);
-      await page.locator("#movie_player").screenshot({ path: outputPath, type: "png", timeout: 15_000 });
+      await page.waitForTimeout(3_000);
+      await page.locator("#movie_player").click({ position: { x: 460, y: 260 }, timeout: 10_000 });
+      await page.waitForFunction(() => {
+        const video = document.querySelector("video");
+        return Boolean(video && video.readyState >= 1 && video.videoWidth > 0);
+      }, null, { timeout: 20_000 });
+      await page.evaluate(async (targetSecond) => {
+        const video = document.querySelector("video");
+        if (!video) return;
+        video.muted = true;
+        try {
+          await video.play();
+        } catch {
+          // The prior user-like click normally permits playback; keep waiting for metadata if play is blocked.
+        }
+        const target = Math.min(Math.max(0, Number(targetSecond)), Number.isFinite(video.duration) ? Math.max(0, video.duration - 1) : Math.max(0, Number(targetSecond)));
+        await new Promise<void>((resolve) => {
+          let done = false;
+          const finish = () => {
+            if (done) return;
+            done = true;
+            video.removeEventListener("seeked", finish);
+            resolve();
+          };
+          video.addEventListener("seeked", finish, { once: true });
+          video.currentTime = target;
+          window.setTimeout(finish, 4_000);
+        });
+      }, start);
+      await page.waitForTimeout(900);
+      await page.evaluate(() => {
+        const video = document.querySelector("video");
+        video?.pause();
+        const style = document.createElement("style");
+        style.textContent = [
+          ".ytp-chrome-bottom",
+          ".ytp-chrome-top",
+          ".ytp-gradient-bottom",
+          ".ytp-gradient-top",
+          ".ytp-spinner",
+          ".ytp-bezel",
+          ".ytp-pause-overlay",
+          ".ytp-tooltip",
+          ".ytp-large-play-button"
+        ].map((selector) => `${selector}{display:none!important;opacity:0!important;visibility:hidden!important;}`).join("\n");
+        document.head.append(style);
+      });
+      await page.locator("video").screenshot({ path: outputPath, type: "png", timeout: 15_000 });
       await page.close();
       assets.push({ filename });
     }
