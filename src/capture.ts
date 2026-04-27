@@ -15,6 +15,9 @@ type PlaywrightModule = {
     launch(options: { headless: boolean }): Promise<{
       newPage(options: { viewport: { width: number; height: number }; deviceScaleFactor: number }): Promise<{
         goto(url: string, options: { waitUntil: "domcontentloaded"; timeout: number }): Promise<unknown>;
+        locator(selector: string): {
+          screenshot(options: { path: string; type: "png"; timeout?: number }): Promise<Buffer>;
+        };
         waitForTimeout(ms: number): Promise<void>;
         screenshot(options: { path: string; type: "png" }): Promise<Buffer>;
         close(): Promise<void>;
@@ -61,14 +64,14 @@ async function captureWithPlaywright(
       const filename = `frame-${String(index + 1).padStart(3, "0")}.png`;
       const outputPath = path.join(jobDir, filename);
       const page = await browser.newPage({
-        viewport: { width: 1280, height: 720 },
+        viewport: { width: 1365, height: 900 },
         deviceScaleFactor: 1
       });
       const start = Math.max(0, Math.floor(segment.startSec));
-      const embedUrl = `https://www.youtube.com/embed/${videoId}?start=${start}&autoplay=0&controls=0&modestbranding=1&rel=0`;
-      await page.goto(embedUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
-      await page.waitForTimeout(3_000);
-      await page.screenshot({ path: outputPath, type: "png" });
+      const watchUrl = `https://www.youtube.com/watch?v=${videoId}&t=${start}s`;
+      await page.goto(watchUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
+      await page.waitForTimeout(5_000);
+      await page.locator("#movie_player").screenshot({ path: outputPath, type: "png", timeout: 15_000 });
       await page.close();
       assets.push({ filename });
     }
