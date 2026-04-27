@@ -55,6 +55,7 @@ export const config = {
   jobTtlMs: numberEnv("JOB_TTL_HOURS", 24) * 60 * 60 * 1000,
   geminiApiKey: process.env.GEMINI_API_KEY || "",
   geminiModel: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+  googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
   googleTtsAccessToken: process.env.GOOGLE_TTS_ACCESS_TOKEN || "",
   googleTtsApiKey: process.env.GOOGLE_TTS_API_KEY || "",
   googleTtsLanguageCode: process.env.GOOGLE_TTS_LANGUAGE_CODE || "ko-KR",

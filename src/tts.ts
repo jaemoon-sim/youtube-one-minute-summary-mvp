@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { config } from "./config.ts";
+import { getServiceAccountAccessToken } from "./googleAuth.ts";
 import { estimateNarrationMs } from "./manifest.ts";
 import type { SummarySegmentDraft } from "./types.ts";
 
@@ -15,7 +16,7 @@ export async function synthesizeSegmentAudio(
 ): Promise<AudioAsset> {
   const durationMs = Math.min(10_000, Math.max(4_000, estimateNarrationMs(segment.narrationKo)));
 
-  if (config.googleTtsAccessToken || config.googleTtsApiKey) {
+  if (config.googleApplicationCredentials || config.googleTtsAccessToken || config.googleTtsApiKey) {
     const filename = `audio-${String(index + 1).padStart(3, "0")}.mp3`;
     const outputPath = `${outputPathWithoutExtension}.mp3`;
     const audio = await requestGoogleTts(segment.narrationKo);
@@ -24,7 +25,7 @@ export async function synthesizeSegmentAudio(
   }
 
   if (!config.allowDemoFallback) {
-    throw new Error("GOOGLE_TTS_ACCESS_TOKEN 또는 GOOGLE_TTS_API_KEY가 설정되어 있지 않습니다.");
+    throw new Error("GOOGLE_APPLICATION_CREDENTIALS, GOOGLE_TTS_ACCESS_TOKEN, GOOGLE_TTS_API_KEY 중 하나가 필요합니다.");
   }
 
   const filename = `audio-${String(index + 1).padStart(3, "0")}.wav`;
@@ -37,7 +38,10 @@ async function requestGoogleTts(text: string): Promise<Buffer> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json"
   };
-  if (config.googleTtsAccessToken) {
+  if (config.googleApplicationCredentials) {
+    const accessToken = await getServiceAccountAccessToken(config.googleApplicationCredentials);
+    headers.Authorization = `Bearer ${accessToken}`;
+  } else if (config.googleTtsAccessToken) {
     headers.Authorization = `Bearer ${config.googleTtsAccessToken}`;
   } else {
     url.searchParams.set("key", config.googleTtsApiKey);
