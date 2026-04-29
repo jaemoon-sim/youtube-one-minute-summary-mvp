@@ -69,6 +69,18 @@
           <ol id="segment-list" class="segment-list"></ol>
         </div>
       </section>
+
+      <section class="feed-panel" aria-label="요약 피드">
+        <div class="feed-header">
+          <div>
+            <p class="eyebrow">Recent summaries</p>
+            <h2>요약된 영상</h2>
+          </div>
+          <button id="refresh-feed-button" class="secondary-button" type="button">새로고침</button>
+        </div>
+        <div id="feed-list" class="feed-list"></div>
+        <p id="feed-empty" class="feed-empty" hidden>아직 생성된 요약이 없습니다.</p>
+      </section>
     </main>
 
     <audio id="segment-audio" preload="auto"></audio>

@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { config } from "./config.ts";
-import { cleanupExpiredJobs, getJob, initDb, markInterruptedJobsFailed, publicJob } from "./db.ts";
+import { cleanupExpiredJobs, getJob, initDb, listReadyJobs, markInterruptedJobsFailed, publicJob } from "./db.ts";
 import { createJob } from "./jobs.ts";
 
 type JsonRecord = Record<string, unknown>;
@@ -38,6 +38,13 @@ async function route(request: http.IncomingMessage, response: http.ServerRespons
     const urlValue = typeof body.url === "string" ? body.url : "";
     const job = await createJob(urlValue);
     sendJson(response, 201, { jobId: job.id });
+    return;
+  }
+
+  if (method === "GET" && pathname === "/api/jobs") {
+    const limit = Number(url.searchParams.get("limit") || 20);
+    const jobs = listReadyJobs(limit).map(publicJob);
+    sendJson(response, 200, { jobs });
     return;
   }
 

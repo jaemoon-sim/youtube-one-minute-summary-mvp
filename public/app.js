@@ -20,12 +20,16 @@ const sourceTitle = document.querySelector("#source-title");
 const sourceLink = document.querySelector("#source-link");
 const segmentList = document.querySelector("#segment-list");
 const audio = document.querySelector("#segment-audio");
+const feedList = document.querySelector("#feed-list");
+const feedEmpty = document.querySelector("#feed-empty");
+const refreshFeedButton = document.querySelector("#refresh-feed-button");
 
 let manifest = null;
 let currentIndex = 0;
 let isPlaying = false;
 let rafId = 0;
 let pollTimer = 0;
+let activeJobId = "";
 
 const statusText = {
   queued: ["대기 중", "작업 큐에 들어갔습니다."],
@@ -95,6 +99,12 @@ audio.addEventListener("ended", () => {
 audio.addEventListener("timeupdate", updateProgress);
 audio.addEventListener("loadedmetadata", updateProgress);
 
+refreshFeedButton.addEventListener("click", () => {
+  loadFeed();
+});
+
+loadFeed();
+
 function pollJob(jobId) {
   window.clearInterval(pollTimer);
   pollTimer = window.setInterval(async () => {
@@ -105,6 +115,7 @@ function pollJob(jobId) {
         window.clearInterval(pollTimer);
         submitButton.disabled = false;
         await loadManifest(jobId);
+        await loadFeed();
       }
       if (job.status === "failed") {
         window.clearInterval(pollTimer);
@@ -128,8 +139,11 @@ function renderJob(job) {
 
 async function loadManifest(jobId) {
   manifest = await apiJson(`/api/jobs/${jobId}/manifest`);
+  activeJobId = jobId;
   currentIndex = 0;
   renderPlayer();
+  markActiveFeedItem();
+  playerPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function renderPlayer() {
@@ -149,6 +163,66 @@ function renderPlayer() {
   });
   totalTime.textContent = formatTime(totalDurationMs() / 1000);
   setSegment(0, false);
+}
+
+async function loadFeed() {
+  try {
+    const result = await apiJson("/api/jobs?limit=24");
+    const jobs = Array.isArray(result.jobs) ? result.jobs : [];
+    const items = await Promise.all(jobs.map(async (job) => {
+      try {
+        const itemManifest = await apiJson(`/api/jobs/${job.id}/manifest`);
+        return { job, manifest: itemManifest };
+      } catch {
+        return { job, manifest: null };
+      }
+    }));
+    renderFeed(items.filter((item) => item.manifest));
+  } catch {
+    feedList.replaceChildren();
+    feedEmpty.hidden = false;
+    feedEmpty.textContent = "요약 피드를 불러오지 못했습니다.";
+  }
+}
+
+function renderFeed(items) {
+  feedList.replaceChildren();
+  feedEmpty.hidden = items.length > 0;
+  feedEmpty.textContent = "아직 생성된 요약이 없습니다.";
+
+  for (const item of items) {
+    const firstSegment = item.manifest.segments[0];
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "feed-card";
+    button.dataset.jobId = item.job.id;
+
+    const thumb = document.createElement("img");
+    thumb.src = firstSegment?.frameUrl || "";
+    thumb.alt = "";
+    thumb.loading = "lazy";
+
+    const body = document.createElement("span");
+    body.className = "feed-card-body";
+
+    const title = document.createElement("strong");
+    title.textContent = item.manifest.sourceTitle || item.job.sourceTitle || "제목 없는 요약";
+
+    const meta = document.createElement("span");
+    meta.className = "feed-card-meta";
+    meta.textContent = `${item.manifest.segments.length}개 구간 · ${formatRelativeDate(item.job.updatedAt)}`;
+
+    const caption = document.createElement("span");
+    caption.className = "feed-card-caption";
+    caption.textContent = firstSegment?.headline || "요약 보기";
+
+    body.append(title, meta, caption);
+    button.append(thumb, body);
+    button.addEventListener("click", () => loadManifest(item.job.id));
+    feedList.append(button);
+  }
+
+  markActiveFeedItem();
 }
 
 async function setSegment(index, autoPlay) {
@@ -213,6 +287,12 @@ function markActiveSegment() {
   });
 }
 
+function markActiveFeedItem() {
+  [...feedList.children].forEach((item) => {
+    item.classList.toggle("active", item.dataset.jobId === activeJobId);
+  });
+}
+
 function showStatus(status, progress) {
   const copy = statusText[status] || statusText.queued;
   statusPanel.hidden = false;
@@ -236,6 +316,8 @@ function resetPlayer() {
   manifest = null;
   currentIndex = 0;
   playerPanel.hidden = true;
+  activeJobId = "";
+  markActiveFeedItem();
   summaryProgressFill.style.width = "0%";
   audio.removeAttribute("src");
   audio.load();
@@ -266,4 +348,24 @@ function formatTime(totalSeconds) {
   const minutes = Math.floor(seconds / 60);
   const remainder = seconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+}
+
+function formatRelativeDate(isoDate) {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return "방금 전";
+  }
+  const diffMs = Date.now() - date.getTime();
+  const minutes = Math.max(0, Math.floor(diffMs / 60_000));
+  if (minutes < 1) {
+    return "방금 전";
+  }
+  if (minutes < 60) {
+    return `${minutes}분 전`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours}시간 전`;
+  }
+  return date.toLocaleDateString("ko-KR", { month: "short", day: "numeric" });
 }

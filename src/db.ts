@@ -76,6 +76,29 @@ export function getJob(id: string): JobRecord | null {
   return row || null;
 }
 
+export function listReadyJobs(limit = 20): JobRecord[] {
+  const db = initDb();
+  const safeLimit = Math.min(100, Math.max(1, Math.trunc(limit)));
+  return db.prepare(`
+    SELECT
+      id,
+      source_url AS sourceUrl,
+      source_title AS sourceTitle,
+      video_id AS videoId,
+      status,
+      progress,
+      error,
+      manifest_path AS manifestPath,
+      created_at AS createdAt,
+      updated_at AS updatedAt,
+      expires_at AS expiresAt
+    FROM jobs
+    WHERE status = 'ready'
+    ORDER BY updated_at DESC
+    LIMIT ?
+  `).all(safeLimit) as JobRecord[];
+}
+
 export function updateJobStatus(id: string, status: JobStatus, progress: number, error: string | null = null): void {
   const db = initDb();
   db.prepare(`
